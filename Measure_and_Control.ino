@@ -39,12 +39,12 @@ uint8_t wet3 = 3;
 uint8_t dry3 = 2;
 
 //variables to hold voltages and temperatures
-long v1;
-long t1;
-long v2;
-long t2;
-long v3;
-long t3;
+float v1;
+float t1;
+float v2;
+float t2;
+float v3;
+float t3;
 
 OneWire oneWire(ONE_WIRE_PIN);                     //create onewire instance
 DS2438 ds2438u1(&oneWire, DS2438_address1 );       //create DS2438 insteance for device 1
@@ -59,28 +59,33 @@ void setup()
   ds2438u3.begin();                       //begin DS2438 3
   
   //close all valves to start
+  Serial.println("Closing Valves");
   write(pulseStandby, DS2413_address1);
   delay(500);
   write(pulseStandby, DS2413_address2);
   delay(500);
   write(pulseStandby, DS2413_address3);
   delay(500);
+  Serial.println("All Valves Standby");
   
   write(pulseClose, DS2413_address1);
   delay(500);
   write(pulseStandby, DS2413_address1);
   delay(500);
+  Serial.println("Valve 1 Closed");
   write(pulseClose, DS2413_address2);
   delay(500);
   write(pulseStandby, DS2413_address2);
   delay(500);
+  Serial.println("Valve 2 Closed");
   write(pulseClose, DS2413_address3);
   delay(500);
   write(pulseStandby, DS2413_address3);
   delay(500);
-  Serial.println("All Valves Closed");
-  
-  
+  Serial.println("Valve 3 Closed");
+//  Serial.println("All Valves Closed");
+  Serial.println();
+ 
 //  close(DS2413_address1);                 //close valve 1
 //  close(DS2413_address2);                 //close valve 2
 //  close(DS2413_address3);                 //close valve 3
@@ -125,7 +130,7 @@ void loop()                             //main operational loop
 //    Serial.println(t1);                                           //display temperature
 //    Serial.println();
 //    Serial.println();        
-  delay(1000);                                                   //brief delay
+  delay(3000);                                                   //brief delay
   }
     
   //unit 2 read and update
@@ -165,7 +170,7 @@ void loop()                             //main operational loop
 //    Serial.println(t2);                                           //display temperature
 //    Serial.println();
 //    Serial.println();
-  delay(1000);  
+  delay(3000);  
   }
 
   //unit 3 read and update
@@ -205,7 +210,7 @@ void loop()                             //main operational loop
     //Serial.println(t3);                                           //display temperature
     Serial.println();
     Serial.println();
-  delay(1000);  
+  delay(3000);  
   }
     Serial.println("Temperature1= ");
     Serial.println(t1);                                           //display temperature
