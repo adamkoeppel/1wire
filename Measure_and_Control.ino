@@ -1,5 +1,7 @@
 //Copyright 2015 Adam Koeppel
 
+//v8 final version using libraries
+
 #include <Arduino.h>  
 #include <OneWire.h>        //include the OneWire library
 #include <DS2438.h>         //include the DS2438 library
