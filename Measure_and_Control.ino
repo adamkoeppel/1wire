@@ -5,7 +5,7 @@
 #include <DS2438.h>         //include the DS2438 library
 
 // define the Arduino digital I/O pin to be used for the 1-Wire network here
-const uint8_t ONE_WIRE_PIN = 3;                 //defined as pin 3
+const uint8_t ONE_WIRE_PIN = 13;                 //defined as pin 13
 
 // define the 1-Wire addresses of the DS2438 battery monitors here (lsb first)
 uint8_t DS2438_address1[] = { 0x26, 0x5B, 0xDD, 0xD6, 0x01, 0x00, 0x00, 0xA6 };       //device #1
@@ -22,6 +22,13 @@ uint8_t DS2413_address3[8] = { 0x3A, 0xA7, 0x34, 0x18, 0x00, 0x00, 0x00, 0xF9 };
 #define DS2413_ACCESS_WRITE 0x5A
 //#define DS2413_ACK_SUCCESS  0xAA
 //#define DS2413_ACK_ERROR    0xFF
+
+//Channel B pulse closes valve
+//Channel A pulse opens valve
+//command shortcuts for DS2438
+#define pulseClose 0x1
+#define pulseOpen 0x2
+#define pulseStandby 0x3
 
 //variables to hold setpoints
 uint8_t wet1 = 3;
@@ -52,20 +59,32 @@ void setup()
   ds2438u3.begin();                       //begin DS2438 3
   
   //close all valves to start
-  write(0x1, DS2413_address1);
+  Serial.println("Closing Valves");
+  write(pulseStandby, DS2413_address1);
   delay(500);
-  write(0x0, DS2413_address1);
+  write(pulseStandby, DS2413_address2);
   delay(500);
-  write(0x1, DS2413_address2);
+  write(pulseStandby, DS2413_address3);
   delay(500);
-  write(0x0, DS2413_address2);
-  delay(500);
-  write(0x1, DS2413_address3);
-  delay(500);
-  write(0x0, DS2413_address3);
-  delay(500);
-  Serial.println("All Valves Closed");
+  Serial.println("All Valves Standby");
   
+  write(pulseClose, DS2413_address1);
+  delay(500);
+  write(pulseStandby, DS2413_address1);
+  delay(500);
+  Serial.println("Valve 1 Closed");
+  write(pulseClose, DS2413_address2);
+  delay(500);
+  write(pulseStandby, DS2413_address2);
+  delay(500);
+  Serial.println("Valve 2 Closed");
+  write(pulseClose, DS2413_address3);
+  delay(500);
+  write(pulseStandby, DS2413_address3);
+  delay(500);
+  Serial.println("Valve 3 Closed");
+//  Serial.println("All Valves Closed");
+  Serial.println();
   
 //  close(DS2413_address1);                 //close valve 1
 //  close(DS2413_address2);                 //close valve 2
@@ -87,26 +106,26 @@ void loop()                             //main operational loop
     Serial.println("Voltage1= ");
     Serial.println(v1);                                           //display voltage
     Serial.println("Temperature1= ");
-    Serial.println(t1);                                           //display voltage        
-    if(v1 > wet1)                                                 //need to close valve, soil is wet
+    Serial.println(t1);                                           //display temperature        
+    if(v1 > wet1)                                                  //need to close valve, soil is wet
     {
-      write(0x0, DS2413_address1);  //call the write function to perform 0x3 (both on) to first address
+      write(pulseClose, DS2413_address1);  //call the write function to perform 0x0 to address
       delay(500);
-      write(0x1, DS2413_address1);   //call the write function to perform 0x0 (both off) to first address
+      write(pulseStandby, DS2413_address1);   //call the write function to perform 0x1 to address
       delay(500);
 //      close(DS2413_address1);                                   //close associated valve
       Serial.println("Valve1 shut");                            //display valve state
     }
     if(v1 < dry1)                                               //need to open valve, soil is dry
     {
-      write(0x0, DS2413_address1);  //call the write function to perform 0x3 (both on) to first address
-      delay(1500);
-      write(0x2, DS2413_address1);   //call the write function to perform 0x0 (both off) to first address
-      delay(1500);
+      write(pulseOpen, DS2413_address1);  //call the write function to perform 0x0
+      delay(500);
+      write(pulseStandby, DS2413_address1);   //call the write function to perform 0x2
+      delay(500);
 //      open(DS2413_address1);                                     //open associated valve
       Serial.println("Valve1 open");                            //display valve state
     }
-  delay(1000);                                                   //brief delay
+  delay(3000);                                                   //brief delay
   }
     
   //unit 2 read and update
@@ -122,18 +141,26 @@ void loop()                             //main operational loop
     Serial.println("Voltage2= ");
     Serial.println(v2);                                           //display voltage
     Serial.println("Temperature2= ");
-    Serial.println(t2);                                           //display voltage        
-    if(v2 > wet2)
+    Serial.println(t2);                                           //display temperature
+    if(v2 > wet2)                                                  //need to close valve, soil is wet
     {
+      write(pulseClose, DS2413_address2);  //call the write function to perform 0x0
+      delay(500);
+      write(pulseStandby, DS2413_address2);   //call the write function to perform 0x1
+      delay(500);
 //      close(DS2413_address2);                                   //close associated valve
       Serial.println("Valve2 shut");                            //display valve state
     }
-    if(v2 < dry2)
+    if(v2 < dry2)                                               //need to open valve, soil is dry
     {
+      write(pulseOpen, DS2413_address2);  //call the write function to perform 0x0
+      delay(500);
+      write(pulseStandby, DS2413_address2);   //call the write function to perform 0x2
+      delay(500);
 //      open(DS2413_address2);                                    //open associated valve
       Serial.println("Valve2 open");                            //display valve state
     }
-  delay(1000);  
+  delay(3000);  
   }
 
   //unit 3 read and update
@@ -149,18 +176,26 @@ void loop()                             //main operational loop
     Serial.println("Voltage3= ");
     Serial.println(v3);                                           //display voltage
     Serial.println("Temperature3= ");
-    Serial.println(t3);                                           //display voltage        
-    if(v3 > wet3)
+    Serial.println(t3);                                           //display temperature
+    if(v3 > wet3)                                                  //need to close valve, soil is wet
     {
+      write(pulseClose, DS2413_address3);  //call the write function to perform 0x0
+      delay(500);
+      write(pulseStandby, DS2413_address3);   //call the write function to perform 0x1
+      delay(500);
 //      close(DS2413_address3);                                   //close associated valve
       Serial.println("Valve3 shut");                            //display valve state
     }
-    if(v3 < dry3)
+    if(v3 < dry3)                                               //need to open valve, soil is dry
     {
+      write(pulseOpen, DS2413_address3);  //call the write function to perform 0x0
+      delay(500);
+      write(pulseStandby, DS2413_address3);   //call the write function to perform 0x2
+      delay(500);
 //      open(DS2413_address3);                                    //open associated valve
       Serial.println("Valve3 open");                            //display valve state
     }
-  delay(1000);  
+  delay(3000);  
   }
 }
 
