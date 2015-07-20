@@ -105,8 +105,7 @@ void loop()                             //main operational loop
     t1 = ds2438u1.getTemperature();                             //set t1 to temperature
     Serial.println("Voltage1= ");
     Serial.println(v1);                                           //display voltage
-    Serial.println("Temperature1= ");
-    Serial.println(t1);                                           //display temperature        
+    
     if(v1 > wet1)                                                  //need to close valve, soil is wet
     {
       write(pulseClose, DS2413_address1);  //call the write function to perform 0x0 to address
@@ -125,7 +124,8 @@ void loop()                             //main operational loop
 //      open(DS2413_address1);                                     //open associated valve
       Serial.println("Valve1 open");                            //display valve state
     }
-  delay(3000);                                                   //brief delay
+  delay(1500);                                                   //brief delay
+  Serial.println();
   }
     
   //unit 2 read and update
@@ -140,8 +140,7 @@ void loop()                             //main operational loop
     t2 = ds2438u2.getTemperature();                             //set t2 to temperature
     Serial.println("Voltage2= ");
     Serial.println(v2);                                           //display voltage
-    Serial.println("Temperature2= ");
-    Serial.println(t2);                                           //display temperature
+    
     if(v2 > wet2)                                                  //need to close valve, soil is wet
     {
       write(pulseClose, DS2413_address2);  //call the write function to perform 0x0
@@ -160,7 +159,8 @@ void loop()                             //main operational loop
 //      open(DS2413_address2);                                    //open associated valve
       Serial.println("Valve2 open");                            //display valve state
     }
-  delay(3000);  
+  delay(1500);  
+  Serial.println();
   }
 
   //unit 3 read and update
@@ -175,8 +175,7 @@ void loop()                             //main operational loop
     t3 = ds2438u3.getTemperature();                             //set t3 to temperature
     Serial.println("Voltage3= ");
     Serial.println(v3);                                           //display voltage
-    Serial.println("Temperature3= ");
-    Serial.println(t3);                                           //display temperature
+    
     if(v3 > wet3)                                                  //need to close valve, soil is wet
     {
       write(pulseClose, DS2413_address3);  //call the write function to perform 0x0
@@ -195,8 +194,19 @@ void loop()                             //main operational loop
 //      open(DS2413_address3);                                    //open associated valve
       Serial.println("Valve3 open");                            //display valve state
     }
-  delay(3000);  
+  delay(1500);  
+  Serial.println();
   }
+  Serial.println();
+  Serial.println();
+  Serial.println("Temperature1= ");
+  Serial.println(t1);                                           //display temperature        
+  Serial.println("Temperature2= ");
+  Serial.println(t2);                                           //display temperature
+  Serial.println("Temperature3= ");
+  Serial.println(t3);                                           //display temperature
+  Serial.println();
+  Serial.println();
 }
 
 //function that writes a change to a DS2413
