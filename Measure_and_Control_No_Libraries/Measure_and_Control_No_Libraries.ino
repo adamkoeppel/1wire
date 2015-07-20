@@ -1,10 +1,190 @@
 //Copyright 2015 Adam Koeppel
 
-//v8 final version using libraries
-
-#include <Arduino.h>  
+//#include <Arduino.h>  
 #include <OneWire.h>        //include the OneWire library
-#include <DS2438.h>         //include the DS2438 library
+//#include <DS2438.h>         //include the DS2438 library
+
+//Below is text from the DS2438 library, via portions @ bechter.com via 
+
+//first library excerpt is the .h 
+#ifndef DS2438_h
+#define DS2438_h
+
+#include <Arduino.h>
+#include <OneWire.h>
+
+#define DS2438_TEMPERATURE_CONVERSION_COMMAND 0x44
+#define DS2438_VOLTAGE_CONVERSION_COMMAND 0xb4
+#define DS2438_WRITE_SCRATCHPAD_COMMAND 0x4e
+#define DS2438_COPY_SCRATCHPAD_COMMAND 0x48
+#define DS2438_READ_SCRATCHPAD_COMMAND 0xbe
+#define DS2438_RECALL_MEMORY_COMMAND 0xb8
+#define DS2438_PAGE_0 0x00
+
+#define DS2438_CHA 0
+#define DS2438_CHB 1
+
+#define DS2438_MODE_CHA 0x01
+#define DS2438_MODE_CHB 0x02
+#define DS2438_MODE_TEMPERATURE 0x04
+
+#define DS2438_TEMPERATURE_DELAY 10
+#define DS2438_VOLTAGE_CONVERSION_DELAY 8
+
+class DS2438 {
+    public:
+        DS2438(OneWire *ow, uint8_t *address);
+        void begin(uint8_t mode=(DS2438_MODE_CHA | DS2438_MODE_CHB | DS2438_MODE_TEMPERATURE));
+        void update();
+        double getTemperature();
+        float getVoltage(int channel=DS2438_CHA);
+        boolean isError();
+        unsigned long getTimestamp();
+    private:
+        OneWire *_ow;
+        uint8_t *_address;
+        uint8_t _mode;
+        double _temperature;
+        float _voltageA;
+        float _voltageB;
+        unsigned long _timestamp;
+        boolean _error;
+        boolean startConversion(int channel, boolean doTemperature);
+        boolean selectChannel(int channel);
+        void writePageZero(uint8_t *data);
+        boolean readPageZero(uint8_t *data);
+};
+
+#endif
+
+//second library excerpt is the .cpp file
+DS2438::DS2438(OneWire *ow, uint8_t *address) {
+    _ow = ow;
+    _address = address;
+};
+
+void DS2438::begin(uint8_t mode) {
+    _mode = mode & (DS2438_MODE_CHA | DS2438_MODE_CHB | DS2438_MODE_TEMPERATURE);
+    _temperature = 0;
+    _voltageA = 0.0;
+    _voltageB = 0.0;
+    _error = true;
+    _timestamp = 0;
+}
+
+void DS2438::update() {
+    uint8_t data[9];
+
+    _error = true;
+    _timestamp = millis();
+
+    if (_mode & DS2438_MODE_CHA || _mode == DS2438_MODE_TEMPERATURE) {
+        boolean doTemperature = _mode & DS2438_MODE_TEMPERATURE;
+        if (!startConversion(DS2438_CHA, doTemperature)) {
+            return;
+        }
+        if (!readPageZero(data))
+            return;
+        if (doTemperature) {
+            _temperature = (double)(((((int16_t)data[2]) << 8) | (data[1] & 0x0ff)) >> 3) * 0.03125;
+        }
+        if (_mode & DS2438_MODE_CHA) {
+            _voltageA = (((data[4] << 8) & 0x00300) | (data[3] & 0x0ff)) / 100.0;
+        }
+    }
+    if (_mode & DS2438_MODE_CHB) {
+        boolean doTemperature = _mode & DS2438_MODE_TEMPERATURE & !(_mode & DS2438_MODE_CHA);
+        if (!startConversion(DS2438_CHB, doTemperature)) {
+            return;
+        }
+        if (!readPageZero(data))
+            return;
+        if (doTemperature) {
+            _temperature = (double)(((((int16_t)data[2]) << 8) | (data[1] & 0x0ff)) >> 3) * 0.03125;
+        }
+        _voltageB = (((data[4] << 8) & 0x00300) | (data[3] & 0x0ff)) / 100.0;
+    }
+    _error = false;
+}
+
+double DS2438::getTemperature() {
+    return _temperature;
+}
+
+float DS2438::getVoltage(int channel) {
+    if (channel == DS2438_CHA) {
+        return _voltageA;
+    } else if (channel == DS2438_CHB) {
+        return _voltageB;
+    } else {
+        return 0.0;
+    }
+}
+
+boolean DS2438::isError() {
+    return _error;
+}
+
+unsigned long DS2438::getTimestamp() {
+    return _timestamp;
+}
+
+boolean DS2438::startConversion(int channel, boolean doTemperature) {
+    if (!selectChannel(channel))
+        return false;
+    _ow->reset();
+    _ow->select(_address);
+    if (doTemperature) {
+        _ow->write(DS2438_TEMPERATURE_CONVERSION_COMMAND, 0);
+        delay(DS2438_TEMPERATURE_DELAY);
+        _ow->reset();
+        _ow->select(_address);
+    }
+    _ow->write(DS2438_VOLTAGE_CONVERSION_COMMAND, 0);
+    delay(DS2438_VOLTAGE_CONVERSION_DELAY);
+    return true;
+}
+
+boolean DS2438::selectChannel(int channel) {
+    uint8_t data[9];
+    if (readPageZero(data)) {
+        if (channel == DS2438_CHB)
+            data[0] = data[0] | 0x08;
+        else
+            data[0] = data[0] & 0xf7;
+        writePageZero(data);
+        return true;
+    }
+    return false;
+}
+
+void DS2438::writePageZero(uint8_t *data) {
+    _ow->reset();
+    _ow->select(_address);
+    _ow->write(DS2438_WRITE_SCRATCHPAD_COMMAND, 0);
+    _ow->write(DS2438_PAGE_0, 0);
+    for (int i = 0; i < 8; i++)
+        _ow->write(data[i], 0);
+    _ow->reset();
+    _ow->select(_address);
+    _ow->write(DS2438_COPY_SCRATCHPAD_COMMAND, 0);
+    _ow->write(DS2438_PAGE_0, 0);
+}
+
+boolean DS2438::readPageZero(uint8_t *data) {
+    _ow->reset();
+    _ow->select(_address);
+    _ow->write(DS2438_RECALL_MEMORY_COMMAND, 0);
+    _ow->write(DS2438_PAGE_0, 0);
+    _ow->reset();
+    _ow->select(_address);
+    _ow->write(DS2438_READ_SCRATCHPAD_COMMAND, 0);
+    _ow->write(DS2438_PAGE_0, 0);
+    for (int i = 0; i < 9; i++)
+        data[i] = _ow->read();
+    return _ow->crc8(data, 8) == data[8];
+}
+//end library code embded in program
 
 // define the Arduino digital I/O pin to be used for the 1-Wire network here
 const uint8_t ONE_WIRE_PIN = 13;                 //defined as pin 13
@@ -223,37 +403,6 @@ int write(uint8_t state, uint8_t address[8])    // pass in address of the DS2413
 }
 
 
-/*
-//function that closes a valve attached to a specific DS2413
-int close(uint8_t address[8])              //just pass in address of the DS2413
-{
-  oneWire.reset();                         //reset to begin oneWire
-  oneWire.select(address);                 //select the correct DS2413
-  oneWire.write(DS2413_ACCESS_WRITE);      //access the write functionality
-  //GPIO pin A will be the pin to control the closing of the valve. Turning off GPIO A pulls the h bridge high sending power to the valve
-  oneWire.write(~0x0);                     //send the inverted data  WHY????????  WHY IS THIS NECESSARY???
-  oneWire.write(0x0);                      //send the correct data  WHY????????  WHY IS THIS NECESSARY???
-  delay(1000);                              //delay to allow the valve to close and latch
-  //now write high to GPIO A to pull H bridge low and stop sending power to the valve
-  oneWire.write(~0x1);                     //send the inverted data  WHY????????  WHY IS THIS NECESSARY???
-  oneWire.write(0x1);                      //send the correct data  WHY????????  WHY IS THIS NECESSARY???
-  oneWire.reset();                         //terminate the oneWire communication
-}
 
-//function that opens a valve attached to a specific DS2413
-int open(uint8_t address[8])              //just pass in address of the DS2413
-{
-  oneWire.reset();                         //reset to begin oneWire
-  oneWire.select(address);                 //select the correct DS2413
-  oneWire.write(DS2413_ACCESS_WRITE);      //access the write functionality
-  //GPIO pin B will be the pin to control the opening of the valve. Turning off GPIO B pulls the h bridge high sending power to the valve
-  oneWire.write(~0x0);                     //send the inverted data  WHY????????  WHY IS THIS NECESSARY???
-  oneWire.write(0x0);                      //send the correct data  WHY????????  WHY IS THIS NECESSARY???
-  delay(1000);                              //delay to allow the valve to close and latch
-  //now write high to GPIO A to pull H bridge low and stop sending power to the valve
-  oneWire.write(~0x2);                     //send the inverted data  WHY????????  WHY IS THIS NECESSARY???
-  oneWire.write(0x2);                      //send the correct data  WHY????????  WHY IS THIS NECESSARY???
-  oneWire.reset();                         //terminate the oneWire communication
-}
-*/
+
 
